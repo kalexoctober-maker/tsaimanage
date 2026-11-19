@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AI预测报告 · OCTOPI AI 管理后台</title>
+<style>
+  :root {
+    --primary: #2f54eb;
+    --primary-soft: #eef2ff;
+    --ink: #1f2329;
+    --muted: #8a8f99;
+    --line: #e5e7eb;
+    --bg: #f2f3f5;
+    --top: #1f2a44;
+    --ok: #16a34a; --ok-bg: #e8f7ee;
+    --bad: #dc2626; --bad-bg: #fdecec;
+    --warn: #c2410c; --warn-bg: #fff3e6;
+    --gray: #6b7280; --gray-bg: #f1f2f4;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    font-size: 13px; color: var(--ink); background: var(--bg);
+  }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  button:disabled { cursor: not-allowed; opacity: .45; }
+
+  .top {
+    height: 48px; background: var(--top); color: #fff;
+    display: flex; align-items: center; gap: 28px; padding: 0 18px;
+  }
+  .logo { font-weight: 800; font-size: 18px; letter-spacing: .02em; width: 170px; }
+  .top nav { display: flex; height: 100%; }
+  .top nav span { display: flex; align-items: center; padding: 0 18px; color: #c9d1e3; }
+  .top nav span.on { background: #fff; color: var(--ink); }
+  .top .user { margin-left: auto; color: #c9d1e3; }
+
+  .shell { display: flex; height: calc(100vh - 48px); }
+  .side { width: 188px; background: #fff; border-right: 1px solid var(--line); overflow: auto; padding: 6px 0; flex-shrink: 0; }
+  .side div { padding: 11px 20px; color: #4b5563; }
+  .side .sub { padding-left: 40px; }
+  .side .nav { cursor: pointer; }
+  .side .nav:hover { color: var(--primary); }
+  .side .on { background: var(--primary-soft); color: var(--primary); font-weight: 600; }
+  .side .grp { color: var(--ink); font-weight: 500; }
+
+  .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .tabs { background: #fff; border-bottom: 1px solid var(--line); display: flex; gap: 2px; padding: 6px 12px 0; }
+  .tabs span { padding: 6px 14px; border-radius: 4px 4px 0 0; color: #4b5563; }
+  .tabs span.nav { cursor: pointer; }
+  .tabs span.on { background: var(--primary-soft); color: var(--primary); }
+  .page { flex: 1; overflow: auto; padding: 12px; }
+  .card { background: #fff; border-radius: 6px; padding: 16px; }
+
+  .filters { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; }
+  .f { display: flex; align-items: center; gap: 8px; }
+  .f > label { color: #4b5563; white-space: nowrap; }
+  .ctl {
+    height: 32px; border: 1px solid #dcdfe6; border-radius: 4px; background: #fff;
+    padding: 0 10px; min-width: 150px;
+  }
+  .ctl:focus { outline: none; border-color: var(--primary); }
+  input.ctl.q { width: 260px; }
+  input[type="date"].ctl { min-width: 140px; }
+  .range { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .range span { color: var(--muted); }
+  .quick { display: flex; gap: 0; margin-left: 4px; flex-shrink: 0; }
+  .quick button {
+    height: 32px; padding: 0 12px; border: 1px solid #dcdfe6; background: #fff; margin-left: -1px; white-space: nowrap;
+  }
+  .quick button:first-child { border-radius: 4px 0 0 4px; margin-left: 0; }
+  .quick button:last-child { border-radius: 0 4px 4px 0; }
+  .quick button:hover { color: var(--primary); }
+  .quick button.on { background: var(--primary); border-color: var(--primary); color: #fff; position: relative; z-index: 1; }
+
+  .bar { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin: 16px 0 12px; flex-wrap: wrap; }
+  .stats { display: flex; gap: 12px; flex-wrap: wrap; }
+  .stat { background: #f2f3f5; border-radius: 6px; padding: 10px 14px; min-width: 170px; }
+  .stat .k { font-size: 12px; color: #4b5563; }
+  .stat .v { font-size: 20px; margin-top: 8px; text-align: center; }
+  .stat .split { margin-top: 8px; padding-top: 6px; border-top: 1px dashed #d6d9de; font-size: 12px; color: #4b5563; }
+  .stat .split-row { display: flex; justify-content: space-between; gap: 12px; line-height: 20px; font-variant-numeric: tabular-nums; }
+  .stat .split-row em { font-style: normal; color: var(--muted); margin-left: 6px; display: inline-block; min-width: 32px; text-align: right; }
+  .btns { display: flex; gap: 8px; align-items: center; }
+  .btn {
+    height: 32px; padding: 0 14px; border-radius: 4px; border: 1px solid #dcdfe6; background: #fff;
+  }
+  .btn:hover:not(:disabled) { color: var(--primary); border-color: #b9c6fb; }
+  .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .btn.primary:hover:not(:disabled) { color: #fff; }
+  .btn.danger { color: var(--bad); }
+  .btn.ok { background: var(--ok); border-color: var(--ok); color: #fff; }
+  .btn.link { border: 0; background: transparent; color: var(--primary); padding: 0 6px; height: auto; }
+
+  .stabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 0; }
+  .stabs button {
+    border: 0; background: transparent; padding: 8px 14px; color: #4b5563; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .stabs button.on { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+  .stabs em { font-style: normal; color: var(--muted); margin-left: 4px; font-weight: 400; }
+  .stabs button.on em { color: var(--primary); }
+
+  .tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-top: 0; }
+  .tbl-wrap.boxed { border-top: 1px solid var(--line); }
+  table { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 2020px; }
+  table.prompts { min-width: 1400px; }
+  th, td { padding: 10px 10px; border-bottom: 1px solid var(--line); text-align: center; white-space: nowrap; background: #fff; }
+  th { background: #f7f8fa; color: #4b5563; font-weight: 600; font-size: 12px; }
+  tr:hover td { background: #f8faff; }
+  td.op, th.op { position: sticky; right: 0; box-shadow: -6px 0 8px -6px rgba(0,0,0,.12); z-index: 1; }
+  th.op { background: #f7f8fa; }
+  td.l { text-align: left; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+  td.content-cell { text-align: left; max-width: 320px; overflow: hidden; text-overflow: ellipsis; color: #4b5563; }
+  td.mono, .mono { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .muted { color: var(--muted); }
+  .small { font-size: 12px; }
+  .tag { display: inline-block; padding: 1px 8px; border-radius: 3px; font-size: 12px; line-height: 20px; }
+  .tag.ok { color: var(--ok); background: var(--ok-bg); }
+  .tag.bad { color: var(--bad); background: var(--bad-bg); }
+  .tag.warn { color: var(--warn); background: var(--warn-bg); }
+  .tag.gray { color: var(--gray); background: var(--gray-bg); }
+  .tag.blue { color: var(--primary); background: var(--primary-soft); }
+  .tag.test { color: #7c3aed; background: #f3e8ff; margin-left: 4px; padding: 0 5px; }
+  .conf { display: inline-flex; flex-direction: column; gap: 4px; align-items: center; font-variant-numeric: tabular-nums; }
+  .conf b { font-weight: 700; color: var(--ink); }
+  .conf span { color: var(--muted); }
+  .cbar { display: flex; width: 120px; height: 4px; border-radius: 2px; overflow: hidden; background: #eee; }
+  .cbar i:nth-child(1) { background: #2f54eb; }
+  .cbar i:nth-child(2) { background: #a3a9b6; }
+  .cbar i:nth-child(3) { background: #f97316; }
+  .ops { display: flex; gap: 2px; justify-content: center; }
+  .ops .btn.link.danger { color: var(--bad); }
+  .empty { padding: 48px; text-align: center; color: var(--muted); }
+  .dot-run { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); margin-right: 5px; animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: .2; } }
+
+  .pager { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 14px; color: #4b5563; }
+  .pager .ctl { min-width: 0; width: 90px; }
+  .pager .pg { min-width: 30px; height: 30px; border: 0; border-radius: 4px; background: #f2f3f5; }
+  .pager .pg.on { background: var(--primary); color: #fff; }
+  .pager input.ctl { width: 50px; text-align: center; padding: 0 4px; }
+
+  .chains { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 12px; margin: 16px 0; }
+  .chain { background: #f7f8fa; border-radius: 6px; padding: 12px 14px; }
+  .chain h4 { margin: 0 0 4px; font-size: 13px; }
+  .chain .desc { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+  .chain-row { display: grid; grid-template-columns: 22px 1fr 70px 130px 48px; gap: 8px; align-items: center; padding: 4px 0; font-size: 12px; }
+  .chain-row .no { width: 20px; height: 20px; border-radius: 50%; background: var(--primary); color: #fff; display: grid; place-items: center; font-size: 11px; }
+  .chain-row .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pbar { height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden; }
+  .pbar i { display: block; height: 100%; background: var(--primary); }
+  .chain-row .pv { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .chain .warnline { color: var(--warn); font-size: 12px; margin-top: 6px; }
+
+  #overlay { position: fixed; inset: 0; background: rgba(0,0,0,.3); z-index: 20; display: none; }
+  #overlay.open { display: block; }
+  #drawer {
+    position: fixed; top: 0; right: 0; bottom: 0; width: min(600px, 100vw); background: #fff; z-index: 21;
+    display: none; flex-direction: column; box-shadow: -8px 0 24px rgba(0,0,0,.12);
+  }
+  #drawer.open { display: flex; }
+  .dh { padding: 16px 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: flex-start; }
+  .dh h3 { margin: 0; font-size: 16px; display: flex; gap: 8px; align-items: center; }
+  .dh p { margin: 6px 0 0; color: var(--muted); }
+  .x { border: 0; background: transparent; font-size: 20px; color: var(--muted); }
+  .db { flex: 1; overflow: auto; padding: 16px 20px; }
+  .df { padding: 12px 20px; border-top: 1px solid var(--line); display: flex; gap: 8px; justify-content: flex-end; }
+  .kv { display: grid; grid-template-columns: 96px 1fr 96px 1fr; gap: 10px 12px; margin: 0; }
+  .kv dt { color: var(--muted); }
+  .kv dd { margin: 0; }
+  .sec { margin: 20px 0 8px; font-weight: 600; }
+  .confbig { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .confbig div { border: 1px solid var(--line); border-radius: 6px; padding: 10px; text-align: center; }
+  .confbig div.pick { border-color: var(--primary); background: var(--primary-soft); }
+  .confbig b { display: block; font-size: 22px; margin-top: 4px; }
+  .content { background: #f7f8fa; border-radius: 6px; padding: 12px; line-height: 1.7; white-space: pre-wrap; }
+  .think { background: #111827; color: #d1d5db; border-radius: 6px; padding: 12px; font-family: ui-monospace, Menlo, monospace; font-size: 12px; line-height: 1.8; max-height: 260px; overflow: auto; }
+  .think .t { color: #6b7280; margin-right: 8px; }
+  .note { background: var(--warn-bg); color: var(--warn); border-radius: 6px; padding: 10px 12px; margin-top: 12px; line-height: 1.6; }
+  .note.blue { background: var(--primary-soft); color: #1d39c4; }
+  .note.bad { background: var(--bad-bg); color: var(--bad); }
+  .log { list-style: none; margin: 0; padding: 0; }
+  .log li { padding: 0 0 12px 14px; border-left: 2px solid var(--line); position: relative; }
+  .log li::before { content: ""; position: absolute; left: -5px; top: 5px; width: 8px; height: 8px; border-radius: 50%; background: var(--primary); }
+  .log .at { color: var(--muted); font-size: 12px; }
+
+  #modal { position: fixed; inset: 0; z-index: 30; display: none; overflow: auto; }
+  #modal.open { display: block; }
+  .mbg { position: fixed; inset: 0; background: rgba(0,0,0,.35); }
+  .mcard { position: relative; width: min(560px, calc(100% - 32px)); margin: 10vh auto; background: #fff; border-radius: 8px; padding: 20px 22px; }
+  .mcard.wide { width: min(780px, calc(100% - 32px)); margin-top: 5vh; }
+  .mcard h3 { margin: 0 0 10px; font-size: 16px; }
+  .mcard textarea { width: 100%; min-height: 70px; border: 1px solid #dcdfe6; border-radius: 4px; padding: 8px; resize: vertical; }
+  .mfoot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+  .frow { display: grid; grid-template-columns: 90px 1fr; gap: 10px; align-items: start; margin-bottom: 12px; }
+  .frow > label { color: #4b5563; padding-top: 6px; }
+  .frow .ctl { width: 100%; }
+  .frow textarea.big { min-height: 180px; font-family: ui-monospace, Menlo, monospace; font-size: 12px; line-height: 1.6; }
+  .frow .help { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .hint { font-size: 12px; margin-top: 6px; }
+  .hint.bad { color: var(--bad); }
+  .hint.ok { color: var(--ok); }
+  .rules { width: 100%; border-collapse: collapse; min-width: 0; }
+  .rules th, .rules td { text-align: left; white-space: normal; padding: 8px; vertical-align: top; }
+
+  #toast {
+    position: fixed; left: 50%; top: 64px; transform: translateX(-50%); z-index: 40;
+    background: #fff; border: 1px solid var(--line); box-shadow: 0 6px 20px rgba(0,0,0,.12);
+    padding: 10px 16px; border-radius: 6px; display: none; max-width: 80vw;
+  }
+  #toast.open { display: block; }
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="logo">OCTOPI AI</div>
+  <nav><span>首页</span><span>系统管理</span><span class="on">业务平台</span><span>基础工具</span></nav>
+  <div class="user">t16alex</div>
+</div>
+<div class="shell">
+  <aside class="side" id="side"></aside>
+  <section class="main">
+    <div class="tabs" id="tabs"></div>
+    <div class="page"><div class="card" id="app"></div></div>
+  </section>
+</div>
+<div id="overlay" data-act="close"></div>
+<aside id="drawer"></aside>
+<div id="modal"></div>
+<div id="toast" role="status"></div>
+
+<script>
+const STORAGE_KEY = "ai-report-proto-3";
+const OPERATOR = "t16alex";
+const NOW = new Date();
+const TEST_DURATION = 12000;
+const TEST_FAIL_RATE = 0.25;
+
+const MODELS = {
+  online: ["Octopi-Engine v3.2", "Octopi-Engine v3.1"],
+  local: ["DeepSeek-R1-32B（本地）", "Qwen2.5-72B（本地）"],
+};
+/* 线上引擎单价：元 / 1K Token；本地模型不计费 */
+const MODEL_PRICE = { "Octopi-Engine v3.2": 0.02, "Octopi-Engine v3.1": 0.015 };
+const FAIL_REASONS = [
+  { step: 3, text: "比赛数据拉取失败：数据接口返回 504" },
+  { step: 5, text: "模型调用超时（超过 60 秒无响应）" },
+  { step: 6, text: "输出格式校验失败：胜/平/负概率之和不为 100%" },
+];
+const SOURCE_LABEL = { online: "线上AI引擎", local: "本地AI" };
+const TYPE_LABEL = { pre: "赛前", live: "赛中" };
+const SPORT_LABEL = { football: "足球", basketball: "篮球" };
+const MODULES = { football: "足球AI预测报告", basketball: "篮球AI预测报告" };
+const STATUS = {
+  showing: { label: "展示中", cls: "ok" },
+  pending: { label: "待审核", cls: "warn" },
+  blocked: { label: "已屏蔽", cls: "bad" },
+  expired: { label: "已过期", cls: "gray" },
+};
+const STATUS_TABS = ["all", "showing", "pending", "blocked", "expired"];
+const PICK_INDEX = { "1": 0, "X": 1, "2": 2 };
+
+const FIXTURES = [
+  ["AC Milan Women", "Sassuolo Women", "意大利甲级联赛（女）", "lg2101"],
+  ["Jong Sparta Rotterdam", "Young Ajax", "荷兰足球乙级联赛", "lg1402"],
+  ["Lunds BK", "Norrby IF", "超甲级联赛", "lg3307"],
+  ["Sampdoria", "Benevento", "意大利乙级足球联赛", "lg2302"],
+  ["Carrarese", "ACD Virtus Entella", "意大利乙级足球联赛", "lg2302"],
+  ["Lazio", "Lecce", "意大利甲级联赛", "lg2301"],
+  ["SK Sigma Olomouc", "SK Slavia Praha", "捷克足球甲级联赛", "lg4101"],
+  ["Manchester City", "Arsenal", "英格兰超级联赛", "lg1001"],
+  ["Bayern Munich", "Borussia Dortmund", "德国甲级联赛", "lg1035"],
+  ["Real Madrid", "Barcelona", "西班牙甲级联赛", "lg1008"],
+  ["Inter Milan", "AC Milan", "意大利甲级联赛", "lg2301"],
+  ["Liverpool", "Chelsea", "英格兰超级联赛", "lg1001"],
+  ["Shanghai Port", "Shanghai Shenhua", "中国超级联赛", "lg1649"],
+  ["Kawasaki Frontale", "Yokohama F. Marinos", "日本J1联赛", "lg1501"],
+  ["PSV Eindhoven", "Feyenoord", "荷兰甲级联赛", "lg1401"],
+  ["Al Nassr", "Al Hilal", "沙特职业联赛", "lg1602"],
+];
+const BB_FIXTURES = [
+  ["Los Angeles Lakers", "Golden State Warriors", "NBA", "bk001"],
+  ["Boston Celtics", "Milwaukee Bucks", "NBA", "bk001"],
+  ["Denver Nuggets", "Phoenix Suns", "NBA", "bk001"],
+  ["Guangdong Southern Tigers", "Liaoning Flying Leopards", "CBA", "bk101"],
+  ["Beijing Ducks", "Zhejiang Lions", "CBA", "bk101"],
+];
+
+const PROMPT_SEED = [
+  { id: "PR001", module: "football", name: "足球赛前-基础面分析", ratio: 60, priority: 1, enabled: true,
+    prev: "你是一名足球分析师。请分析 {home_team} vs {away_team} 双方近况 {recent_form}，给出胜/平/负概率（三项和为100%）和200字分析。",
+    content: "你是一名专业足球分析师。请基于以下数据，对 {home_team} vs {away_team}（{league}，{kickoff}）做预测。\n1. 分析双方近10场战绩与主客场表现：{recent_form}\n2. 结合伤停信息：{injuries}\n3. 给出胜/平/负概率（三项和为100%），并说明理由。\n输出：JSON（home/draw/away 概率）+ 300字以内中文分析。" },
+  { id: "PR002", module: "football", name: "足球赛前-盘口变化侧重", ratio: 50, priority: 2, enabled: true,
+    content: "你是足球盘口分析师。对 {home_team} vs {away_team} 做预测，重点分析初盘与即时盘变化：{odds}。\n结合近况 {recent_form}，给出胜/平/负概率（三项和为100%）。\n输出：JSON + 250字以内中文分析，需说明盘口信号。" },
+  { id: "PR003", module: "football", name: "足球通用-稳健版", ratio: 100, priority: 3, enabled: true,
+    content: "请对 {home_team} vs {away_team}（{league}）给出胜/平/负概率预测（三项和为100%），并用200字说明主要依据。不得编造伤停或转会信息。" },
+  { id: "PR004", module: "football", name: "足球赛前-伤停深度版（草稿）", ratio: 30, priority: 4, enabled: false,
+    content: "你是足球战术分析师。逐一评估 {home_team} 与 {away_team} 的伤停名单 {injuries} 对首发阵容和战术的影响，再给出胜/平/负概率（三项和为100%）。\n输出：JSON + 400字以内中文分析。" },
+  { id: "PR005", module: "basketball", name: "篮球赛前-基础面", ratio: 70, priority: 1, enabled: true,
+    content: "你是一名专业篮球分析师。基于双方近10场攻防效率、背靠背情况与伤停 {injuries}，预测 {home_team} vs {away_team}（{league}，{kickoff}）的胜负概率（两项和为100%）。\n输出：JSON + 250字以内中文分析。" },
+  { id: "PR006", module: "basketball", name: "篮球通用-稳健版", ratio: 100, priority: 2, enabled: true,
+    content: "请对 {home_team} vs {away_team} 给出主胜/客胜概率（两项和为100%），并用200字说明依据。不得编造伤停信息。" },
+];
+
+function rng(seed) {
+  return function () {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+const MIN = 60000, HOUR = 3600000, DAY = 86400000;
+
+/* ---------- 提示词选择：按优先排序依次掷随机数，低于比率则执行；末位必定执行 ---------- */
+function enabledChain(module, list) {
+  return (list || db.prompts).filter((p) => p.module === module && p.enabled)
+    .sort((a, b) => a.priority - b.priority || a.id.localeCompare(b.id));
+}
+function choosePrompt(module, rand, list) {
+  const chain = enabledChain(module, list);
+  for (let i = 0; i < chain.length; i++) {
+    if (i === chain.length - 1 || rand() * 100 < chain[i].ratio) return chain[i];
+  }
+  return null;
+}
+function effectiveOdds(chain) {
+  let remain = 1;
+  return chain.map((p, i) => {
+    const v = i === chain.length - 1 ? remain : remain * p.ratio / 100;
+    remain -= v;
+    return v;
+  });
+}
+
+function seed() {
+  const r = rng(20261120);
+  const prompts = PROMPT_SEED.map((p, i) => {
+    const actor = i % 2 ? "陈岚" : OPERATOR;
+    const created = NOW.getTime() - (40 - i * 3) * DAY;
+    const versions = [{ v: 1, name: p.name, content: p.prev || p.content, at: created, operator: actor }];
+    const log = [{ at: created, actor, text: `新增提示词（V1），${p.enabled ? "启用" : "停用"}。` }];
+    if (p.prev) {
+      const at = NOW.getTime() - 14 * DAY;
+      versions.push({ v: 2, name: p.name, content: p.content, at, operator: OPERATOR });
+      log.unshift({ at, actor: OPERATOR, text: "编辑：内容，版本升级为 V2。" });
+    }
+    const last = versions[versions.length - 1];
+    const out = Object.assign({}, p, { version: last.v, versions, operator: last.operator, updatedAt: last.at, lastTest: null, log });
+    delete out.prev;
+    return out;
+  });
+  const pick = (arr) => arr[Math.floor(r() * arr.length)];
+  const between = (a, b) => a + Math.floor(r() * (b - a + 1));
+  const matchId = () => Array.from({ length: 15 }, () => "abcdefghijklmnopqrstuvwxyz0123456789"[Math.floor(r() * 36)]).join("");
+  const matches = [];
+  const total = 52;
+  for (let i = 0; i < total; i++) {
+    const f = FIXTURES[i % FIXTURES.length];
+    let kickoff = NOW.getTime() + (-50 + i) * DAY + between(-6, 6) * HOUR;
+    if (i === total - 6) kickoff = NOW.getTime() - 35 * MIN;
+    if (i === total - 5) kickoff = NOW.getTime() - 80 * MIN;
+    if (i === total - 4) kickoff = NOW.getTime() + 3 * HOUR;
+    kickoff = Math.round(kickoff / (5 * MIN)) * 5 * MIN;
+    const goals = [];
+    const hg = pick([0, 0, 1, 1, 1, 2, 2, 3]);
+    const ag = pick([0, 0, 1, 1, 2, 2, 3]);
+    for (let g = 0; g < hg; g++) goals.push({ side: "h", minute: between(3, 90) });
+    for (let g = 0; g < ag; g++) goals.push({ side: "a", minute: between(3, 90) });
+    goals.sort((a, b) => a.minute - b.minute);
+    matches.push({ id: matchId(), sport: "football", home: f[0], away: f[1], league: f[2], leagueId: f[3], kickoff, goals });
+  }
+  for (let i = 0; i < 16; i++) {
+    const f = BB_FIXTURES[i % BB_FIXTURES.length];
+    let kickoff = NOW.getTime() + (-12 + i) * DAY + between(-5, 5) * HOUR;
+    kickoff = Math.round(kickoff / (5 * MIN)) * 5 * MIN;
+    let h = between(92, 124), a = between(92, 124);
+    if (h === a) h += 3;
+    matches.push({ id: matchId(), sport: "basketball", home: f[0], away: f[1], league: f[2], leagueId: f[3], kickoff, final: { h, a } });
+  }
+
+  const reports = [];
+  matches.forEach((m, i) => {
+    const preCount = 1 + (r() < 0.4 ? 1 : 0) + (r() < 0.12 ? 1 : 0);
+    const times = Array.from({ length: preCount }, () => m.kickoff - between(2, 36) * HOUR - between(0, 59) * MIN).sort((a, b) => a - b);
+    times.forEach((t, k) => {
+      const forcePending = m.sport === "football" && m.kickoff > NOW.getTime() && k === times.length - 1 && i % 2 === 0;
+      reports.push(makeReport(r, m, "pre", t, { forcePending }));
+    });
+    const wall = (NOW.getTime() - m.kickoff) / MIN;
+    if (m.sport === "football" && wall > 25 && r() < 0.35) {
+      reports.push(makeReport(r, m, "live", m.kickoff + between(20, Math.min(80, wall - 2)) * MIN, {}));
+    }
+  });
+  /* 只有本地AI使用提示词管理里的提示词；线上引擎用自有提示词 */
+  reports.forEach((rep) => {
+    if (rep.source !== "local") return;
+    const p = choosePrompt(MATCH_SPORT(matches, rep.matchId), r, prompts);
+    const v = p.versions.filter((x) => x.at <= rep.generatedAt).pop() || p.versions[0];
+    rep.promptId = p.id; rep.promptVersion = v.v;
+  });
+  const list = reports.filter((x) => x.generatedAt <= NOW.getTime()).sort((a, b) => a.generatedAt - b.generatedAt);
+  list.forEach((x, i) => { x.id = String(331000 + i); });
+  const otherMatch = matches.find((m) => m.sport === "basketball" && m.kickoff > NOW.getTime());
+  const testRuns = [{ id: "run-seed", operator: "陈岚", promptId: "PR005", matchId: otherMatch.id, module: "basketball",
+    model: MODELS.local[0], startedAt: NOW.getTime(), duration: 25000 }];
+  return { matches, reports: list, prompts, testRuns };
+}
+const MATCH_SPORT = (matches, id) => matches.find((m) => m.id === id).sport;
+
+function makeReport(r, m, type, generatedAt, opts) {
+  const o = opts || {};
+  const source = o.source || (o.forcePending || r() < 0.3 ? "local" : "online");
+  const model = o.model || MODELS[source][Math.floor(r() * 2)];
+  const tokens = source === "online" ? 1800 + Math.floor(r() * 4200) : 9000 + Math.floor(r() * 22000);
+  let conf;
+  if (m.sport === "basketball") {
+    let p = 28 + Math.floor(r() * 48);
+    if (p === 50) p = 54;
+    conf = [p, 0, 100 - p];
+  } else {
+    let w;
+    do { w = [r() + 0.25, r() * 0.7 + 0.15, r() + 0.2]; } while (Math.abs(Math.max(...w) - [...w].sort((a, b) => b - a)[1]) < 0.04);
+    const sum = w[0] + w[1] + w[2];
+    conf = w.map((v) => Math.round((v / sum) * 100));
+    conf[1] = 100 - conf[0] - conf[2];
+  }
+  const pick = ["1", "X", "2"][conf.indexOf(Math.max(...conf))];
+  const recent = NOW.getTime() - generatedAt < 3 * DAY;
+  const review = o.test ? "pending" : source === "local" && (o.forcePending || (recent && r() < 0.6)) ? "pending" : "approved";
+  const blocked = !o.test && !o.forcePending && r() < 0.06;
+  const log = [{
+    at: generatedAt, actor: "系统",
+    text: source === "online" ? `线上AI引擎生成（${model}），直接进入展示。` : `本地AI生成（${model}），进入待审核。`,
+  }];
+  if (source === "local" && review === "approved") log.unshift({ at: generatedAt + 40 * MIN, actor: "陈岚", text: "审核通过。" });
+  if (blocked) log.unshift({ at: generatedAt + 3 * HOUR, actor: "陈岚", text: "屏蔽。原因：分析引用的伤停信息有误。" });
+  const cost = source === "online" ? Math.round(tokens / 1000 * MODEL_PRICE[model] * 10000) / 10000 : null;
+  return { id: "", matchId: m.id, type, source, model, tokens, cost, conf, pick, generatedAt, review, blocked, log,
+    promptId: o.promptId || null, promptVersion: o.promptVersion || null, test: !!o.test };
+}
+
+let db = { matches: [], reports: [], prompts: [], testRuns: [] };
+function load() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+    if (raw && raw.reports && raw.reports.length && raw.prompts && raw.testRuns) { db = raw; return; }
+  } catch (e) { /* fall back to seed */ }
+  db = seed();
+}
+function save() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); } catch (e) { /* demo only */ } }
+
+let MATCH = {};
+const rebuildMatchMap = () => { MATCH = Object.fromEntries(db.matches.map((m) => [m.id, m])); };
+const promptOf = (rep) => db.prompts.find((p) => p.id === rep.promptId) || null;
+function promptLabel(rep) {
+  const p = promptOf(rep);
+  if (!p) return "";
+  const v = p.versions.find((x) => x.v === rep.promptVersion) || p.versions[p.versions.length - 1];
+  return `${v.name} · V${v.v}`;
+}
+function promptCellHtml(rep) {
+  const label = promptLabel(rep);
+  return label ? esc(label) : `<span class="muted" title="线上AI引擎使用自有提示词">—</span>`;
+}
+const myRun = () => db.testRuns.find((r) => r.operator === OPERATOR) || null;
+const fmtCost = (c) => c === null || c === undefined ? "-" : "¥" + c.toFixed(4);
+
+/* 比赛进程：未开赛 / 进行中 / 已结束 */
+function matchState(m) {
+  const wall = (Date.now() - m.kickoff) / MIN;
+  if (wall < 0) return { phase: "upcoming" };
+  if (m.sport === "basketball") {
+    const done = wall >= 150;
+    const k = done ? 1 : wall / 150;
+    const h = Math.round(m.final.h * k), a = Math.round(m.final.a * k);
+    return { phase: done ? "finished" : "live", h, a, outcome: h > a ? "1" : "2" };
+  }
+  const minute = wall <= 45 ? wall : wall <= 60 ? 45 : Math.min(90, wall - 15);
+  const done = wall >= 110;
+  const upTo = done ? 90 : minute;
+  const h = m.goals.filter((g) => g.side === "h" && g.minute <= upTo).length;
+  const a = m.goals.filter((g) => g.side === "a" && g.minute <= upTo).length;
+  return { phase: done ? "finished" : "live", h, a, minute: Math.floor(minute), outcome: h > a ? "1" : h === a ? "X" : "2" };
+}
+
+/* 状态由三件事推出来：是否屏蔽、是否审核通过、是否为同场同类型里最新的已通过报告 */
+function groupKey(rep) { return rep.matchId + "|" + rep.type; }
+function computeStatuses(overrides) {
+  const eff = (rep) => Object.assign({ review: rep.review, blocked: rep.blocked }, (overrides || {})[rep.id]);
+  const latest = {};
+  db.reports.forEach((rep) => {
+    const e = eff(rep);
+    if (e.blocked || e.review !== "approved") return;
+    const k = groupKey(rep);
+    if (!latest[k] || rep.generatedAt > latest[k].generatedAt) latest[k] = rep;
+  });
+  const out = {};
+  db.reports.forEach((rep) => {
+    const e = eff(rep);
+    if (e.blocked) out[rep.id] = "blocked";
+    else if (e.review !== "approved") out[rep.id] = "pending";
+    else out[rep.id] = latest[groupKey(rep)] === rep ? "showing" : "expired";
+  });
+  return out;
+}
+let ST = {};
+function refreshStatuses() { ST = computeStatuses(); }
+
+function hitOf(rep) {
+  const ms = matchState(MATCH[rep.matchId]);
+  if (ms.phase !== "finished") return null;
+  return rep.pick === ms.outcome;
+}
+
+/* ---------- 日期 ---------- */
+const pad = (n) => String(n).padStart(2, "0");
+function fmtDT(ts) { const d = new Date(ts); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; }
+function fmtD(d) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
+function quickRange(kind) {
+  const today = new Date(NOW); today.setHours(0, 0, 0, 0);
+  const y = today.getFullYear(), mo = today.getMonth();
+  const monday = new Date(today); monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+  const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+  if (kind === "thisWeek") return [monday, addDays(monday, 6)];
+  if (kind === "lastWeek") return [addDays(monday, -7), addDays(monday, -1)];
+  if (kind === "thisMonth") return [new Date(y, mo, 1), new Date(y, mo + 1, 0)];
+  return [new Date(y, mo - 1, 1), new Date(y, mo, 0)];
+}
+const QUICK = [["thisWeek", "本周"], ["lastWeek", "上周"], ["thisMonth", "本月"], ["lastMonth", "上月"]];
+
+/* ---------- 界面状态 ---------- */
+const blankForm = () => ({ sport: "", type: "", source: "", model: "", q: "", from: "", to: "", quick: "" });
+const ui = {
+  view: location.hash === "#prompts" ? "prompts" : "reports",
+  form: blankForm(), applied: blankForm(), tab: "all", pageNo: 1, size: 10, openId: null, modal: null,
+  pf: { module: "", status: "" }, draft: null,
+};
+
+function esc(v) { return String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+const fmtNum = (n) => n.toLocaleString("en-US");
+const pct0 = (v) => Math.round(v * 100) + "%";
+
+function render() {
+  refreshStatuses();
+  renderChrome();
+  if (ui.view === "prompts") renderPrompts(); else renderReports();
+}
+function renderChrome() {
+  const on = (v) => ui.view === v ? " on" : "";
+  document.getElementById("side").innerHTML = `
+    <div>竞猜管理</div><div>新闻管理</div><div>积分商城管理</div><div>广告管理</div><div>消息管理</div><div>APP管理</div>
+    <div class="grp">AI推荐管理</div>
+    <div class="sub">联赛推荐</div><div class="sub">球队推荐</div><div class="sub">赛事推荐</div>
+    <div class="sub nav${on("reports")}" data-act="nav" data-v="reports">AI预测报告</div>
+    <div class="sub nav${on("prompts")}" data-act="nav" data-v="prompts">提示词管理</div>
+    <div>跟单管理</div>`;
+  document.getElementById("tabs").innerHTML = `<span>首页</span><span>新闻列表</span>
+    <span class="nav${on("reports")}" data-act="nav" data-v="reports">AI预测报告</span>
+    <span class="nav${on("prompts")}" data-act="nav" data-v="prompts">提示词管理</span>`;
+}
+
+/* ====================== AI预测报告 ====================== */
+function filtered(ignoreTab) {
+  const f = ui.applied;
+  const q = f.q.trim().toLowerCase();
+  const from = f.from ? new Date(f.from + "T00:00:00").getTime() : -Infinity;
+  const to = f.to ? new Date(f.to + "T23:59:59").getTime() : Infinity;
+  return db.reports.filter((rep) => {
+    const m = MATCH[rep.matchId];
+    if (f.sport && m.sport !== f.sport) return false;
+    if (f.type && rep.type !== f.type) return false;
+    if (f.source && rep.source !== f.source) return false;
+    if (f.model && rep.model !== f.model) return false;
+    if (rep.generatedAt < from || rep.generatedAt > to) return false;
+    if (q && ![rep.id, m.id, m.leagueId, m.home, m.away, m.league].join(" ").toLowerCase().includes(q)) return false;
+    if (!ignoreTab && ui.tab !== "all" && ST[rep.id] !== ui.tab) return false;
+    return true;
+  }).sort((a, b) => b.generatedAt - a.generatedAt);
+}
+
+/* 命中率：展示中 + 已过期，且比赛已结束；比赛预测成功率只看每场展示中的赛前报告；Token、费用含所有状态 */
+function statsOf(list) {
+  const counted = list.filter((rep) => (ST[rep.id] === "showing" || ST[rep.id] === "expired") && hitOf(rep) !== null);
+  const of = (type) => {
+    const xs = counted.filter((rep) => rep.type === type);
+    return { hit: xs.filter(hitOf).length, n: xs.length };
+  };
+  const pre = of("pre"), live = of("live");
+  const mv = counted.filter((rep) => rep.type === "pre" && ST[rep.id] === "showing").map(hitOf);
+  const tokens = list.reduce((s, rep) => s + rep.tokens, 0);
+  const cost = list.reduce((s, rep) => s + (rep.cost || 0), 0);
+  return { pre, live, match: { hit: mv.filter(Boolean).length, n: mv.length }, tokens, cost };
+}
+function stats(list) {
+  return {
+    all: statsOf(list),
+    online: statsOf(list.filter((rep) => rep.source === "online")),
+    local: statsOf(list.filter((rep) => rep.source === "local")),
+  };
+}
+const pct = (x) => x.n ? Math.round((x.hit / x.n) * 100) + "%" : "—";
+function rateCard(title, s, key) {
+  const line = (label, x) => `<div class="split-row"><span>${label}</span><span>${x.hit}/${x.n}<em>${pct(x)}</em></span></div>`;
+  return `<div class="stat"><div class="k">${title}：${pct(s.all[key])}</div><div class="v">${s.all[key].hit}/${s.all[key].n}</div>
+    <div class="split">${line("线上AI", s.online[key])}${line("本地AI", s.local[key])}</div></div>`;
+}
+function tokenCard(s) {
+  const line = (label, n) => `<div class="split-row"><span>${label}</span><span>${fmtNum(n)}</span></div>`;
+  return `<div class="stat"><div class="k">消耗Token（含已屏蔽）</div><div class="v">${fmtNum(s.all.tokens)}</div>
+    <div class="split">${line("线上AI", s.online.tokens)}${line("本地AI", s.local.tokens)}</div></div>`;
+}
+function costCard(s) {
+  return `<div class="stat"><div class="k">费用（含已屏蔽）</div><div class="v">¥${s.all.cost.toFixed(2)}</div>
+    <div class="split"><div class="split-row"><span>线上AI</span><span>¥${s.online.cost.toFixed(2)}</span></div>
+    <div class="split-row"><span>本地AI</span><span>-</span></div></div></div>`;
+}
+
+function opt(value, label, cur) { return `<option value="${esc(value)}"${value === cur ? " selected" : ""}>${esc(label)}</option>`; }
+function renderFilters() {
+  const f = ui.form;
+  const models = [...MODELS.online, ...MODELS.local];
+  return `
+    <div class="filters">
+      <div class="f"><label>体育类型</label><select class="ctl" data-f="sport">${opt("", "请选择", f.sport)}${opt("football", "足球", f.sport)}${opt("basketball", "篮球", f.sport)}</select></div>
+      <div class="f"><label>报告类型</label><select class="ctl" data-f="type">${opt("", "请选择", f.type)}${opt("pre", "赛前", f.type)}${opt("live", "赛中", f.type)}</select></div>
+      <div class="f"><label>生成来源</label><select class="ctl" data-f="source">${opt("", "请选择", f.source)}${opt("online", "线上AI引擎", f.source)}${opt("local", "本地AI", f.source)}</select></div>
+      <div class="f"><label>预测模型</label><select class="ctl" data-f="model">${opt("", "请选择", f.model)}${models.map((m) => opt(m, m, f.model)).join("")}</select></div>
+      <div class="f"><label>搜索内容</label><input class="ctl q" data-f="q" placeholder="输入报告ID/比赛ID/联赛ID/球队名/联赛名" value="${esc(f.q)}" /></div>
+      <div class="f"><label>生成时间</label>
+        <div class="range">
+          <input type="date" class="ctl" data-f="from" value="${esc(f.from)}" /><span>至</span>
+          <input type="date" class="ctl" data-f="to" value="${esc(f.to)}" />
+          <div class="quick">${QUICK.map(([k, label]) => `<button type="button" class="${f.quick === k ? "on" : ""}" data-act="quick" data-k="${k}">${label}</button>`).join("")}</div>
+        </div>
+      </div>
+    </div>`;
+}
+function renderReports() {
+  const scope = filtered(true);
+  const list = filtered(false);
+  const s = stats(scope);
+  const counts = { all: scope.length };
+  Object.keys(STATUS).forEach((k) => { counts[k] = scope.filter((rep) => ST[rep.id] === k).length; });
+  const pages = Math.max(1, Math.ceil(list.length / ui.size));
+  ui.pageNo = Math.min(ui.pageNo, pages);
+  const rows = list.slice((ui.pageNo - 1) * ui.size, ui.pageNo * ui.size);
+
+  document.getElementById("app").innerHTML = `
+    ${renderFilters()}
+    <div class="bar">
+      <div class="stats">
+        ${rateCard("赛前报告命中率", s, "pre")}
+        ${rateCard("赛中报告命中率", s, "live")}
+        ${rateCard("比赛预测成功率（赛前）", s, "match")}
+        ${tokenCard(s)}
+        ${costCard(s)}
+      </div>
+      <div class="btns">
+        <button class="btn primary" data-act="search">查询</button>
+        <button class="btn" data-act="reset-filter">重置</button>
+        <button class="btn primary" data-act="export">导出数据</button>
+        <button class="btn link" data-act="rules">统计与状态规则</button>
+      </div>
+    </div>
+    <div class="stabs">${STATUS_TABS.map((k) => `<button class="${ui.tab === k ? "on" : ""}" data-act="tab" data-k="${k}">${k === "all" ? "全部" : STATUS[k].label}<em>${counts[k]}</em></button>`).join("")}</div>
+    <div class="tbl-wrap">
+      ${rows.length ? `<table>
+        <thead><tr>
+          <th>报告ID</th><th>体育类型</th><th>报告类型</th><th>生成来源</th><th>预测模型</th><th>提示词</th><th>消耗Token</th><th>费用</th>
+          <th>预测1x2</th><th>置信指数<br/>（胜/平/负）</th><th>比赛结果<br/>（常规时间）</th><th>命中</th>
+          <th>相关比赛ID</th><th>相关球队</th><th>相关联赛</th><th>开赛时间</th><th>预测时间</th><th>状态</th><th class="op">操作</th>
+        </tr></thead>
+        <tbody>${rows.map(rowHtml).join("")}</tbody>
+      </table>` : `<div class="empty">当前筛选下没有报告。</div>`}
+    </div>
+    ${pagerHtml(list.length, pages)}
+    <div style="margin-top:10px;text-align:right"><button class="btn link" data-act="reset-data">重置演示数据</button></div>`;
+}
+function confHtml(rep) {
+  const i = PICK_INDEX[rep.pick];
+  const bb = MATCH[rep.matchId].sport === "basketball";
+  const parts = rep.conf.map((v, k) => bb && k === 1 ? `<span>—</span>` : k === i ? `<b>${v}%</b>` : `<span>${v}%</span>`).join("/");
+  return `<div class="conf"><div>${parts}</div><div class="cbar">${rep.conf.map((v) => `<i style="width:${v}%"></i>`).join("")}</div></div>`;
+}
+function resultHtml(m) {
+  const ms = matchState(m);
+  if (ms.phase === "upcoming") return `<span class="muted">未开赛</span>`;
+  if (ms.phase === "live") return `<span class="muted" title="比赛进行中，完赛后显示比分">—</span>`;
+  return `${ms.h}:${ms.a}`;
+}
+function hitHtml(rep) {
+  const ms = matchState(MATCH[rep.matchId]);
+  if (ms.phase === "upcoming") return `<span class="muted" title="未开赛，不计算">—</span>`;
+  if (ms.phase === "live") return `<span class="muted" title="比赛进行中，结束后计算">—</span>`;
+  return hitOf(rep) ? `<span class="tag ok">是</span>` : `<span class="tag bad">否</span>`;
+}
+function opsHtml(rep) {
+  const st = ST[rep.id];
+  const b = [`<button class="btn link" data-act="view" data-id="${rep.id}">查看报告</button>`];
+  if (st === "pending") b.push(`<button class="btn link" data-act="audit" data-id="${rep.id}">审核</button>`);
+  if (st === "pending" || st === "showing") b.push(`<button class="btn link danger" data-act="block" data-id="${rep.id}">屏蔽</button>`);
+  if (st === "blocked") b.push(`<button class="btn link" data-act="unblock" data-id="${rep.id}">解除屏蔽</button>`);
+  return `<div class="ops">${b.join("")}</div>`;
+}
+function rowHtml(rep) {
+  const m = MATCH[rep.matchId];
+  const st = STATUS[ST[rep.id]];
+  return `<tr>
+    <td class="mono">${rep.id}${rep.test ? `<span class="tag test" title="提示词管理中运行测试生成">测试</span>` : ""}</td>
+    <td>${SPORT_LABEL[m.sport]}</td><td>${TYPE_LABEL[rep.type]}</td>
+    <td><span class="tag ${rep.source === "online" ? "blue" : "gray"}">${SOURCE_LABEL[rep.source]}</span></td>
+    <td>${esc(rep.model)}</td><td class="l" title="${esc(promptLabel(rep))}">${promptCellHtml(rep)}</td>
+    <td class="num">${fmtNum(rep.tokens)}</td><td class="num">${fmtCost(rep.cost)}</td>
+    <td>${rep.pick}</td><td>${confHtml(rep)}</td><td>${resultHtml(m)}</td><td>${hitHtml(rep)}</td>
+    <td class="mono">${m.id}</td><td class="l" title="${esc(m.home + " vs " + m.away)}">${esc(m.home)} vs ${esc(m.away)}</td>
+    <td>${esc(m.league)}</td><td>${fmtDT(m.kickoff).slice(0, 16)}</td><td>${fmtDT(rep.generatedAt)}</td>
+    <td><span class="tag ${st.cls}">${st.label}</span></td>
+    <td class="op">${opsHtml(rep)}</td>
+  </tr>`;
+}
+function pagerHtml(total, pages) {
+  const p = ui.pageNo;
+  const nums = [];
+  for (let i = 1; i <= pages; i++) {
+    if (i === 1 || i === pages || Math.abs(i - p) <= 2) nums.push(i);
+    else if (nums[nums.length - 1] !== "…") nums.push("…");
+  }
+  return `<div class="pager">
+    <span>共 ${total} 条</span>
+    <select class="ctl" data-act-change="size">${[10, 20, 50].map((n) => `<option value="${n}"${n === ui.size ? " selected" : ""}>${n}条/页</option>`).join("")}</select>
+    <button class="pg" data-act="page" data-p="${p - 1}" ${p <= 1 ? "disabled" : ""}>‹</button>
+    ${nums.map((n) => n === "…" ? `<span>…</span>` : `<button class="pg ${n === p ? "on" : ""}" data-act="page" data-p="${n}">${n}</button>`).join("")}
+    <button class="pg" data-act="page" data-p="${p + 1}" ${p >= pages ? "disabled" : ""}>›</button>
+    <span>前往</span><input class="ctl" data-act-change="goto" value="${p}" /><span>页</span>
+  </div>`;
+}
+
+/* ---------- 报告内容与AI思考过程 ---------- */
+function reportText(rep, m) {
+  const bb = m.sport === "basketball";
+  const names = [m.home + " 胜", "平局", m.away + " 胜"];
+  const i = PICK_INDEX[rep.pick];
+  const extra = bb
+    ? `· 主队近5场场均得分 114.6，三分命中率 37.8%；\n· 客队背靠背作战，替补深度不足；\n· 客胜概率 ${rep.conf[2]}%，需关注核心球员出场时间。`
+    : `· 主队近期主场进攻效率较高，场均射正 5.2 次；\n· 客队后防线有轮换，定位球防守存在隐患；\n· 平局概率 ${rep.conf[1]}%，需关注临场首发调整。`;
+  return `【${TYPE_LABEL[rep.type]}预测】${m.home} vs ${m.away}（${m.league}）
+
+综合双方近10场战绩、主客场表现、伤停与盘口变化，模型给出的倾向为：${names[i]}（置信 ${rep.conf[i]}%）。
+
+${extra}
+
+以上内容由 ${rep.model} 生成，仅供参考。`;
+}
+/* 执行步骤日志：只为运行测试生成并保存；fail 为 { step, text } 时在该步中断 */
+function buildSteps(run, m, p, rep, fail) {
+  const bb = m.sport === "basketball";
+  const end = run.startedAt + run.duration;
+  const steps = [
+    `接收任务：比赛 ${m.id}（${m.home} vs ${m.away}，${m.league}，开赛 ${fmtDT(m.kickoff).slice(0, 16)}）`,
+    `运行测试：提示词「${p.name}」V${run.promptVersion}，模型 ${run.model}`,
+    `填充变量：{home_team}=${m.home}，{away_team}=${m.away}，{league}=${m.league}`,
+    `拉取数据：近10场战绩、主客场${bb ? "攻防效率" : "进失球"}、伤停名单`,
+    bb ? "分析：客队背靠背，主队轮换完整，主场胜率 68%" : "拉取盘口：初盘与即时盘变化，主队让球加深 0.25",
+    rep ? (bb ? `推理：主胜 ${rep.conf[0]}% / 客胜 ${rep.conf[2]}%，倾向 ${rep.pick}`
+              : `推理：主胜 ${rep.conf[0]}% / 平 ${rep.conf[1]}% / 客胜 ${rep.conf[2]}%，倾向 ${rep.pick}`) : "推理：计算胜负概率",
+    "生成报告正文，校验格式与敏感词：通过",
+    rep ? `完成：消耗 Token ${fmtNum(rep.tokens)}，报告 #${rep.id} 已进入待审核` : "",
+  ];
+  const kept = fail ? steps.slice(0, fail.step) : steps;
+  const lines = kept.map((text, k) => ({ text, ok: true }));
+  if (fail) lines.push({ text: `失败：${fail.text}`, ok: false });
+  return lines.map((l, k) => Object.assign(l, { at: run.startedAt + Math.round((end - run.startedAt) * k / Math.max(1, lines.length - 1)) }));
+}
+function stepsHtml(steps) {
+  return `<div class="think">${steps.map((s) => `<div${s.ok ? "" : ' style="color:#fca5a5"'}><span class="t">${fmtDT(s.at).slice(11)}</span>${esc(s.text)}</div>`).join("")}</div>`;
+}
+
+/* ---------- 抽屉：查看报告 ---------- */
+function renderDrawer() {
+  const dr = document.getElementById("drawer");
+  const ov = document.getElementById("overlay");
+  const rep = db.reports.find((x) => x.id === ui.openId);
+  if (!rep) { dr.classList.remove("open"); ov.classList.remove("open"); dr.innerHTML = ""; return; }
+  const m = MATCH[rep.matchId];
+  const stKey = ST[rep.id];
+  const st = STATUS[stKey];
+  const ms = matchState(m);
+  const bb = m.sport === "basketball";
+  const names = ["胜（" + m.home + "）", "平", "负（" + m.away + "）"];
+  const i = PICK_INDEX[rep.pick];
+  const showing = db.reports.find((x) => x.id !== rep.id && groupKey(x) === groupKey(rep) && ST[x.id] === "showing");
+  let note = "";
+  if (rep.test) note += `<div class="note blue">本报告由「提示词管理 → 运行测试」生成，需审核通过后才会展示。</div>`;
+  if (stKey === "expired" && showing) note += `<div class="note blue">同场${TYPE_LABEL[rep.type]}报告当前展示的是 #${showing.id}，本报告已过期，不在前端展示，但仍参与命中率统计。</div>`;
+  if (stKey === "blocked") note += `<div class="note">已屏蔽：不在前端展示，不参与命中率统计。</div>`;
+  if (stKey === "pending" && !rep.test) note += `<div class="note">本地AI生成的报告，审核通过后才会在前端展示。</div>`;
+  if (ms.phase !== "finished") note += `<div class="note blue">比赛${ms.phase === "upcoming" ? "未开赛" : "进行中"}，不显示最终结果，也不计算命中。</div>`;
+
+  const actions = [];
+  if (stKey === "pending") actions.push(`<button class="btn ok" data-act="audit" data-id="${rep.id}">审核</button>`);
+  if (stKey === "pending" || stKey === "showing") actions.push(`<button class="btn danger" data-act="block" data-id="${rep.id}">屏蔽</button>`);
+  if (stKey === "blocked") actions.push(`<button class="btn primary" data-act="unblock" data-id="${rep.id}">解除屏蔽</button>`);
+  actions.push(`<button class="btn" data-act="close">关闭</button>`);
+
+  dr.innerHTML = `
+    <div class="dh">
+      <div><h3>报告 #${rep.id} <span class="tag ${st.cls}">${st.label}</span>${rep.test ? `<span class="tag test">测试</span>` : ""}</h3><p>${esc(m.home)} vs ${esc(m.away)} · ${esc(m.league)}</p></div>
+      <button class="x" data-act="close" aria-label="关闭">×</button>
+    </div>
+    <div class="db">
+      <dl class="kv">
+        <dt>体育类型</dt><dd>${SPORT_LABEL[m.sport]}</dd><dt>报告类型</dt><dd>${TYPE_LABEL[rep.type]}</dd>
+        <dt>生成来源</dt><dd>${SOURCE_LABEL[rep.source]}</dd><dt>预测模型</dt><dd>${esc(rep.model)}</dd>
+        <dt>提示词</dt><dd>${promptCellHtml(rep)}</dd><dt>消耗Token</dt><dd>${fmtNum(rep.tokens)}</dd>
+        <dt>费用</dt><dd>${fmtCost(rep.cost)}</dd><dt></dt><dd></dd>
+        <dt>预测时间</dt><dd>${fmtDT(rep.generatedAt)}</dd><dt>开赛时间</dt><dd>${fmtDT(m.kickoff).slice(0, 16)}</dd>
+        <dt>比赛ID</dt><dd class="mono">${m.id}</dd><dt>联赛ID</dt><dd class="mono">${m.leagueId}</dd>
+        <dt>比赛结果</dt><dd>${resultHtml(m)}</dd><dt>命中</dt><dd>${hitHtml(rep)}</dd>
+      </dl>
+      ${note}
+      <div class="sec">置信指数（预测 1x2：${rep.pick}）</div>
+      <div class="confbig">${rep.conf.map((v, k) => bb && k === 1 ? `<div class="muted">平<b>—</b></div>` : `<div class="${k === i ? "pick" : ""}">${esc(names[k])}<b>${v}%</b></div>`).join("")}</div>
+      <div class="sec">报告内容</div>
+      <div class="content">${esc(reportText(rep, m))}</div>
+      ${rep.steps ? `<div class="sec">执行步骤日志（运行测试）</div>${stepsHtml(rep.steps)}` : ""}
+      <div class="sec">操作记录</div>
+      <ul class="log">${rep.log.map((l) => `<li><div class="at">${fmtDT(l.at)} · ${esc(l.actor)}</div><div>${esc(l.text)}</div></li>`).join("")}</ul>
+    </div>
+    <div class="df">${actions.join("")}</div>`;
+  dr.classList.add("open"); ov.classList.add("open");
+}
+
+/* ====================== 提示词管理 ====================== */
+function chainHtml(module, list, highlightId) {
+  const chain = enabledChain(module, list);
+  const odds = effectiveOdds(chain);
+  const shadowed = chain.findIndex((p, i) => i < chain.length - 1 && p.ratio >= 100);
+  return `<div class="chain">
+    <h4>${MODULES[module]} · 执行顺序</h4>
+    <div class="desc">按优先排序依次掷随机数（0–100），低于运行比率则执行；否则进入下一个；末位必定执行。</div>
+    ${chain.length ? chain.map((p, i) => `<div class="chain-row"${p.id === highlightId ? ' style="background:#fff;border-radius:4px"' : ""}>
+      <span class="no">${i + 1}</span>
+      <span class="nm" title="${esc(p.name)}">${esc(p.name)}</span>
+      <span class="muted">${i === chain.length - 1 ? "末位必执行" : "比率 " + p.ratio + "%"}</span>
+      <span class="pbar"><i style="width:${odds[i] * 100}%"></i></span>
+      <span class="pv">${pct0(odds[i])}</span>
+    </div>`).join("") : `<div class="note bad">没有启用的提示词，该模块无法生成报告。</div>`}
+    ${shadowed >= 0 ? `<div class="warnline">「${esc(chain[shadowed].name)}」比率为100%，排在它后面的提示词不会被执行。</div>` : ""}
+  </div>`;
+}
+function promptsVisible() {
+  return db.prompts.filter((p) => (!ui.pf.module || p.module === ui.pf.module)
+      && (!ui.pf.status || (ui.pf.status === "on") === p.enabled))
+    .sort((a, b) => a.module.localeCompare(b.module) * -1 || (b.enabled - a.enabled) || a.priority - b.priority);
+}
+function ratioCell(p) {
+  if (!p.enabled) return `${p.ratio}%<div class="muted small">停用，不参与</div>`;
+  const chain = enabledChain(p.module);
+  const idx = chain.indexOf(p);
+  const odds = effectiveOdds(chain)[idx];
+  return `${p.ratio}%<div class="muted small">${idx === chain.length - 1 ? "末位必定执行，" : ""}实际约 ${pct0(odds)}</div>`;
+}
+function testCell(p) {
+  const runs = db.testRuns.filter((r) => r.promptId === p.id);
+  if (runs.length) {
+    return runs.map((r) => {
+      const sec = Math.max(0, Math.round((Date.now() - r.startedAt) / 1000));
+      return `<div><span class="tag warn"><span class="dot-run"></span>进行中 <span data-elapsed="${r.id}">${sec}s</span></span>
+        <div class="muted small">${r.operator === OPERATOR ? "我" : esc(r.operator)} 发起</div></div>`;
+    }).join("");
+  }
+  const t = p.lastTest;
+  if (!t) return `<span class="muted">—</span>`;
+  const when = `<div class="muted small">${esc(t.operator)} · ${fmtDT(t.at).slice(5, 16)}</div>`;
+  if (t.status === "failed") {
+    return `<span class="tag bad">失败</span> <button class="btn link" data-act="test-fail" data-pid="${p.id}">查看日志</button>
+      <div class="small" style="color:var(--bad);max-width:220px;white-space:normal;margin:4px auto 0">${esc(t.reason)}</div>${when}`;
+  }
+  return `<button class="btn link" data-act="test-report" data-rid="${t.reportId}">查看报告</button>${when}`;
+}
+function onlyEnabled(p) { return p.enabled && enabledChain(p.module).length === 1; }
+function renderPrompts() {
+  const list = promptsVisible();
+  const mine = myRun();
+  const running = !!mine;
+  document.getElementById("app").innerHTML = `
+    <div class="filters" style="justify-content:space-between">
+      <div class="filters">
+        <div class="f"><label>模块</label><select class="ctl" data-pf="module">${opt("", "全部", ui.pf.module)}${Object.entries(MODULES).map(([k, v]) => opt(k, v, ui.pf.module)).join("")}</select></div>
+        <div class="f"><label>状态</label><select class="ctl" data-pf="status">${opt("", "全部", ui.pf.status)}${opt("on", "启用", ui.pf.status)}${opt("off", "停用", ui.pf.status)}</select></div>
+      </div>
+      <div class="btns">
+        <button class="btn primary" data-act="prompt-new">新增提示词</button>
+        <button class="btn" data-act="test-open" ${running ? "disabled title=\"你的测试正在运行\"" : ""}>运行测试</button>
+      </div>
+    </div>
+    <div class="note blue">提示词只用于本地AI生成报告；线上AI引擎使用自有提示词，不受此处配置影响。</div>
+    ${running ? `<div class="note">你的测试正在运行（${esc(db.prompts.find((p) => p.id === mine.promptId).name)} · 比赛 ${mine.matchId}），完成前不能再次运行测试。其他用户不受影响。</div>` : ""}
+    <div class="chains">${Object.keys(MODULES).map((k) => chainHtml(k)).join("")}</div>
+    <div class="tbl-wrap boxed">
+      <table class="prompts">
+        <thead><tr>
+          <th>提示词名称</th><th>版本</th><th>模块</th><th>提示词内容</th><th>运行比率</th><th>优先排序</th><th>状态</th><th>测试状态</th><th>操作人</th><th class="op">操作</th>
+        </tr></thead>
+        <tbody>${list.map((p) => `<tr>
+          <td class="l" style="max-width:240px" title="${esc(p.name)}">${esc(p.name)}</td>
+          <td>V${p.version}</td>
+          <td>${MODULES[p.module]}</td>
+          <td class="content-cell" title="${esc(p.content)}">${esc(p.content.replace(/\n/g, " "))}</td>
+          <td>${ratioCell(p)}</td>
+          <td>${p.priority}</td>
+          <td><span class="tag ${p.enabled ? "ok" : "gray"}">${p.enabled ? "启用" : "停用"}</span></td>
+          <td>${testCell(p)}</td>
+          <td>${esc(p.operator)}<div class="muted small">${fmtDT(p.updatedAt).slice(0, 16)}</div></td>
+          <td class="op"><div class="ops">
+            <button class="btn link" data-act="prompt-view" data-pid="${p.id}">查看</button>
+            <button class="btn link" data-act="prompt-edit" data-pid="${p.id}">编辑</button>
+            ${p.enabled
+              ? `<button class="btn link danger" data-act="toggle" data-pid="${p.id}" ${onlyEnabled(p) ? 'disabled title="每个模块至少保留一个启用的提示词"' : ""}>停用</button>`
+              : `<button class="btn link" data-act="toggle" data-pid="${p.id}">启用</button>`}
+            <button class="btn link" data-act="test-open" data-pid="${p.id}" ${running ? 'disabled title="你的测试正在运行"' : ""}>运行测试</button>
+          </div></td>
+        </tr>`).join("")}</tbody>
+      </table>
+    </div>
+    <p class="muted small">提示词不能删除；不再使用时请停用。新增的提示词默认停用，可先运行测试，确认效果后再启用。</p>`;
+}
+
+function promptCheck(d) {
+  if (!d.name.trim()) return "请填写提示词名称。";
+  if (db.prompts.some((p) => p.id !== d.id && p.name.trim() === d.name.trim())) return "提示词名称已存在。";
+  if (!d.content.trim()) return "请填写提示词内容。";
+  const ratio = Number(d.ratio), pr = Number(d.priority);
+  if (!Number.isInteger(ratio) || ratio < 1 || ratio > 100) return "运行比率需为 1–100 的整数。";
+  if (!Number.isInteger(pr) || pr < 1) return "优先排序需为正整数，数字越小越先执行。";
+  return "";
+}
+function draftList(d) {
+  const temp = { id: d.id || "__new", module: d.module, name: d.name || "（新提示词）", ratio: Number(d.ratio) || 0, priority: Number(d.priority) || 0, enabled: d.id ? db.prompts.find((p) => p.id === d.id).enabled : false };
+  return db.prompts.filter((p) => p.id !== d.id).concat(temp);
+}
+function refreshPromptPreview() {
+  const d = ui.draft;
+  const err = promptCheck(d);
+  const hint = document.getElementById("p-hint");
+  const btn = document.getElementById("p-save");
+  let ok = "新增后为 V1，默认停用，可先运行测试再启用。";
+  if (d.id) {
+    const p = db.prompts.find((x) => x.id === d.id);
+    const bump = p.name !== d.name.trim() || p.content !== d.content;
+    ok = bump ? `名称或内容有改动，保存后生成新版本 V${p.version + 1}，之后生成的报告使用新版本。` : `当前 V${p.version}。只改比率或排序不会生成新版本。`;
+  }
+  if (hint) { hint.textContent = err || ok; hint.className = "hint " + (err ? "bad" : "ok"); }
+  if (btn) btn.disabled = !!err;
+  const box = document.getElementById("p-chain");
+  if (box) box.innerHTML = chainHtml(d.module, draftList(d), d.id || "__new");
+}
+
+/* ---------- 运行测试 ---------- */
+function testCheck(d) {
+  if (myRun()) return { ok: false, msg: "你的测试正在运行，完成后才能再次运行。" };
+  if (!d.promptId) return { ok: false, msg: "请选择提示词。" };
+  if (!d.model) return { ok: false, msg: "请选择本地模型。" };
+  const id = (d.matchId || "").trim();
+  if (!id) return { ok: false, msg: "请输入比赛ID。" };
+  const m = MATCH[id];
+  if (!m) return { ok: false, msg: "未找到该比赛ID。" };
+  if (m.sport !== d.module) return { ok: false, msg: `该比赛是${SPORT_LABEL[m.sport]}，与所选模块不符。` };
+  const ms = matchState(m);
+  if (ms.phase === "finished") return { ok: false, msg: "比赛已结束，不能运行测试。" };
+  return { ok: true, m, msg: `${m.home} vs ${m.away}（${m.league}，${fmtDT(m.kickoff).slice(0, 16)}）· 将生成${ms.phase === "live" ? "赛中" : "赛前"}报告` };
+}
+function refreshTestHint() {
+  const c = testCheck(ui.draft);
+  const hint = document.getElementById("t-hint");
+  if (hint) { hint.textContent = c.msg; hint.className = "hint " + (c.ok ? "ok" : "bad"); }
+  const btn = document.getElementById("t-run");
+  if (btn) btn.disabled = !c.ok;
+}
+function startTest() {
+  const d = ui.draft;
+  const c = testCheck(d);
+  if (!c.ok) return refreshTestHint();
+  const p = db.prompts.find((x) => x.id === d.promptId);
+  db.testRuns.push({ id: "run-" + Date.now(), operator: OPERATOR, promptId: p.id, promptVersion: p.version, matchId: c.m.id,
+    module: d.module, model: d.model, startedAt: Date.now(), duration: TEST_DURATION });
+  save();
+  ui.modal = null; renderModal(); render();
+  toast("已开始运行（异步），完成后报告会进入「AI预测报告管理」，状态为待审核，请到该页面查看。", 5000);
+}
+function finishTest(run) {
+  const m = MATCH[run.matchId];
+  const p = db.prompts.find((x) => x.id === run.promptId);
+  run.promptVersion = run.promptVersion || p.version;
+  const at = run.startedAt + run.duration;
+  db.testRuns = db.testRuns.filter((r) => r.id !== run.id);
+  const mine = run.operator === OPERATOR;
+  if (Math.random() < TEST_FAIL_RATE) {
+    const fail = FAIL_REASONS[Math.floor(Math.random() * FAIL_REASONS.length)];
+    p.lastTest = { status: "failed", at, operator: run.operator, reason: fail.text, matchId: m.id, steps: buildSteps(run, m, p, null, fail) };
+    p.log.unshift({ at, actor: run.operator, text: `运行测试失败：比赛 ${m.id}。原因：${fail.text}` });
+    save(); render();
+    if (mine) toast(`测试失败：${fail.text}`, 5000);
+    return;
+  }
+  const type = matchState(m).phase === "live" ? "live" : "pre";
+  const rep = makeReport(Math.random, m, type, at, { test: true, promptId: p.id, promptVersion: run.promptVersion, source: "local", model: run.model });
+  rep.id = String(Math.max(...db.reports.map((x) => Number(x.id))) + 1);
+  rep.steps = buildSteps(run, m, p, rep, null);
+  rep.log = [{ at, actor: run.operator, text: `提示词管理中运行测试（提示词「${p.name}」V${run.promptVersion}），生成后进入待审核。` }];
+  db.reports.push(rep);
+  p.lastTest = { status: "done", reportId: rep.id, at, operator: run.operator };
+  p.log.unshift({ at, actor: run.operator, text: `运行测试完成：比赛 ${m.id}，生成报告 #${rep.id}（待审核）。` });
+  save();
+  render(); renderDrawer();
+  if (ui.modal && ui.modal.kind === "test-run") renderModal();
+  if (mine) toast(`测试完成：报告 #${rep.id} 已生成，状态待审核。`, 4000);
+}
+function tick() {
+  if (!db.testRuns.length) return;
+  const due = db.testRuns.filter((r) => Date.now() >= r.startedAt + r.duration);
+  if (due.length) { due.forEach(finishTest); return; }
+  db.testRuns.forEach((r) => {
+    document.querySelectorAll(`[data-elapsed="${r.id}"]`).forEach((el) => { el.textContent = Math.round((Date.now() - r.startedAt) / 1000) + "s"; });
+  });
+}
+
+/* ---------- 弹窗 ---------- */
+function impact(rep, override) {
+  const after = computeStatuses({ [rep.id]: override });
+  return db.reports
+    .filter((x) => groupKey(x) === groupKey(rep) && ST[x.id] !== after[x.id])
+    .map((x) => `#${x.id}${x.id === rep.id ? "（本报告）" : ""}：${STATUS[ST[x.id]].label} → ${STATUS[after[x.id]].label}`);
+}
+function impactHtml(lines) {
+  if (!lines.length) return "";
+  return `<div class="note blue">执行后同场同类型报告变化：<br/>${lines.map(esc).join("<br/>")}</div>`;
+}
+const shell = (inner, wide) => `<div class="mbg" data-act="close-modal"></div><div class="mcard${wide ? " wide" : ""}">${inner}</div>`;
+function renderModal() {
+  const box = document.getElementById("modal");
+  const md = ui.modal;
+  if (!md) { box.classList.remove("open"); box.innerHTML = ""; return; }
+  box.classList.add("open");
+  if (md.kind === "rules") {
+    box.innerHTML = shell(`
+      <h3>统计与状态规则</h3>
+      <table class="rules"><thead><tr><th>状态</th><th>怎么进入</th><th>前端展示</th><th>参与命中率统计</th><th>可操作</th></tr></thead><tbody>
+        <tr><td><span class="tag warn">待审核</span></td><td>本地AI生成的报告；提示词运行测试生成的报告</td><td>否</td><td>否</td><td>审核、屏蔽</td></tr>
+        <tr><td><span class="tag ok">展示中</span></td><td>线上AI引擎生成；或审核通过。同场同类型只保留最新一份</td><td>是</td><td>是（比赛结束后）</td><td>屏蔽</td></tr>
+        <tr><td><span class="tag gray">已过期</span></td><td>同场同类型有更新的报告进入展示中，旧的自动转入</td><td>否</td><td>是（比赛结束后）</td><td>查看</td></tr>
+        <tr><td><span class="tag bad">已屏蔽</span></td><td>人工屏蔽，等同软删除</td><td>否</td><td>否</td><td>解除屏蔽</td></tr>
+      </tbody></table>
+      <p class="muted" style="line-height:1.7">· 比赛结果只显示「未开赛」或完赛比分；进行中显示“—”。完赛前命中列显示“—”，不计入命中率。<br/>
+      · 赛前/赛中报告命中率：展示中 + 已过期；比赛预测成功率（赛前）：每场只算当前展示中的那份赛前报告。<br/>
+      · 消耗Token、费用统计包含所有状态（含已屏蔽）；本地模型不计费，费用显示“-”。<br/>
+      · 屏蔽当前展示中的报告后，同场上一份已通过的报告会恢复为展示中。<br/>
+      · 解除屏蔽：未审核过的回到待审核；审核过的按时间重新判断是展示中还是已过期。<br/>
+      · “同场”按 比赛 + 报告类型（赛前/赛中）分别判断，赛中报告不会让赛前报告过期。</p>
+      <div class="mfoot"><button class="btn primary" data-act="close-modal">知道了</button></div>`, true);
+    return;
+  }
+  if (md.kind === "reset") {
+    box.innerHTML = shell(`<h3>重置演示数据</h3><p>本机保存的审核、屏蔽、提示词修改和测试记录会清掉，回到初始样例。</p>
+      <div class="mfoot"><button class="btn" data-act="close-modal">取消</button><button class="btn primary" data-act="do-reset">确认重置</button></div>`);
+    return;
+  }
+  if (md.kind === "prompt-view") {
+    const p = db.prompts.find((x) => x.id === md.pid);
+    box.innerHTML = shell(`
+      <h3>${esc(p.name)} <span class="tag blue">V${p.version}</span> <span class="tag ${p.enabled ? "ok" : "gray"}">${p.enabled ? "启用" : "停用"}</span></h3>
+      <dl class="kv">
+        <dt>模块</dt><dd>${MODULES[p.module]}</dd><dt>编号</dt><dd class="mono">${p.id}</dd>
+        <dt>运行比率</dt><dd>${ratioCell(p)}</dd><dt>优先排序</dt><dd>${p.priority}</dd>
+        <dt>操作人</dt><dd>${esc(p.operator)}</dd><dt>更新时间</dt><dd>${fmtDT(p.updatedAt)}</dd>
+      </dl>
+      <div class="sec">提示词内容（当前 V${p.version}）</div><div class="content mono">${esc(p.content)}</div>
+      ${p.versions.length > 1 ? `<div class="sec">历史版本</div>${p.versions.slice(0, -1).reverse().map((v) => `
+        <details style="margin-bottom:6px"><summary>V${v.v} · ${esc(v.name)} · ${esc(v.operator)} · ${fmtDT(v.at).slice(0, 16)}</summary>
+        <div class="content mono" style="margin-top:6px">${esc(v.content)}</div></details>`).join("")}` : ""}
+      <div class="sec">操作记录</div>
+      <ul class="log">${p.log.map((l) => `<li><div class="at">${fmtDT(l.at)} · ${esc(l.actor)}</div><div>${esc(l.text)}</div></li>`).join("")}</ul>
+      <div class="mfoot"><button class="btn" data-act="close-modal">关闭</button><button class="btn primary" data-act="prompt-edit" data-pid="${p.id}">编辑</button></div>`, true);
+    return;
+  }
+  if (md.kind === "prompt-edit") {
+    const d = ui.draft;
+    box.innerHTML = shell(`
+      <h3>${d.id ? "编辑提示词" : "新增提示词"}</h3>
+      <div class="frow"><label>提示词名称</label><input class="ctl" data-pd="name" value="${esc(d.name)}" placeholder="如：足球赛前-基础面分析 v3" /></div>
+      <div class="frow"><label>模块</label><div>
+        <select class="ctl" data-pd="module" ${d.id ? "disabled" : ""}>${Object.entries(MODULES).map(([k, v]) => opt(k, v, d.module)).join("")}</select>
+        ${d.id ? `<div class="help">模块创建后不可修改。</div>` : ""}</div></div>
+      <div class="two">
+        <div class="frow"><label>运行比率</label><div><input class="ctl" data-pd="ratio" value="${esc(d.ratio)}" inputmode="numeric" /><div class="help">1–100（%）。末位提示词必定执行，比率不生效。</div></div></div>
+        <div class="frow"><label>优先排序</label><div><input class="ctl" data-pd="priority" value="${esc(d.priority)}" inputmode="numeric" /><div class="help">数字越小越先执行。</div></div></div>
+      </div>
+      <div class="frow"><label>提示词内容</label><div>
+        <textarea class="big" data-pd="content">${esc(d.content)}</textarea>
+        <div class="help">可用变量：{home_team} {away_team} {league} {kickoff} {recent_form} {injuries} {odds}</div></div></div>
+      <div id="p-chain"></div>
+      <div id="p-hint" class="hint"></div>
+      <div class="mfoot"><button class="btn" data-act="close-modal">取消</button><button class="btn primary" id="p-save" data-act="prompt-save">保存</button></div>`, true);
+    refreshPromptPreview();
+    return;
+  }
+  if (md.kind === "toggle") {
+    const p = db.prompts.find((x) => x.id === md.pid);
+    const after = db.prompts.map((x) => x.id === p.id ? Object.assign({}, x, { enabled: !x.enabled }) : x);
+    box.innerHTML = shell(`
+      <h3>${p.enabled ? "停用" : "启用"}提示词</h3>
+      <p>${esc(p.name)} · ${MODULES[p.module]}</p>
+      <div class="muted small" style="margin-bottom:6px">${p.enabled ? "停用" : "启用"}后的执行顺序：</div>
+      ${chainHtml(p.module, after, p.id)}
+      <div class="mfoot"><button class="btn" data-act="close-modal">取消</button><button class="btn primary" data-act="do-toggle">确认${p.enabled ? "停用" : "启用"}</button></div>`, true);
+    return;
+  }
+  if (md.kind === "test-run") {
+    const d = ui.draft;
+    const prompts = db.prompts.filter((p) => p.module === d.module).sort((a, b) => b.enabled - a.enabled || a.priority - b.priority);
+    const options = db.matches.filter((m) => m.sport === d.module && matchState(m).phase !== "finished").sort((a, b) => a.kickoff - b.kickoff);
+    box.innerHTML = shell(`
+      <h3>运行测试</h3>
+      ${myRun() ? `<div class="note">你的测试正在运行，完成后才能再次运行。</div>` : ""}
+      <div class="frow"><label>比赛ID</label><div>
+        <input class="ctl mono" data-td="matchId" list="match-options" value="${esc(d.matchId)}" placeholder="输入比赛ID" />
+        <datalist id="match-options">${options.map((m) => `<option value="${m.id}">${esc(m.home)} vs ${esc(m.away)} · ${fmtDT(m.kickoff).slice(5, 16)}</option>`).join("")}</datalist>
+        <div class="help">只能选择未开赛或进行中的比赛。</div></div></div>
+      <div class="frow"><label>模块</label><select class="ctl" data-td="module">${Object.entries(MODULES).map(([k, v]) => opt(k, v, d.module)).join("")}</select></div>
+      <div class="frow"><label>提示词</label><select class="ctl" data-td="promptId">${prompts.map((p) => opt(p.id, `${p.name} · V${p.version}${p.enabled ? "" : "（停用）"}`, d.promptId)).join("")}</select></div>
+      <div class="frow"><label>本地模型</label><select class="ctl" data-td="model">${MODELS.local.map((x) => opt(x, x, d.model)).join("")}</select></div>
+      <div id="t-hint" class="hint"></div>
+      <div class="note blue">点击运行后立即开始，异步执行，大约需要 ${TEST_DURATION / 1000} 秒。生成的报告会同步到「AI预测报告管理」，状态为待审核。你的测试运行期间不能再次运行（不影响其他用户）。</div>
+      <div class="mfoot"><button class="btn" data-act="close-modal">取消</button><button class="btn primary" id="t-run" data-act="test-start">运行</button></div>`);
+    refreshTestHint();
+    return;
+  }
+  if (md.kind === "test-report") {
+    const rep = db.reports.find((x) => x.id === md.rid);
+    const m = MATCH[rep.matchId];
+    refreshStatuses();
+    const st = STATUS[ST[rep.id]];
+    box.innerHTML = shell(`
+      <h3>测试报告 #${rep.id} <span class="tag ${st.cls}">${st.label}</span></h3>
+      <p class="muted">${esc(m.home)} vs ${esc(m.away)} · ${TYPE_LABEL[rep.type]} · 提示词「${esc(promptLabel(rep))}」 · ${esc(rep.model)} · Token ${fmtNum(rep.tokens)}</p>
+      <div class="sec">报告内容</div>
+      <div class="content">${esc(reportText(rep, m))}</div>
+      <div class="sec">AI思考过程（执行步骤日志）</div>
+      ${stepsHtml(rep.steps || [])}
+      <div class="mfoot"><button class="btn" data-act="close-modal">关闭</button><button class="btn primary" data-act="goto-report" data-rid="${rep.id}">到AI预测报告管理审核</button></div>`, true);
+    return;
+  }
+  if (md.kind === "test-fail") {
+    const p = db.prompts.find((x) => x.id === md.pid);
+    const t = p.lastTest;
+    const m = MATCH[t.matchId];
+    box.innerHTML = shell(`
+      <h3>测试失败 <span class="tag bad">失败</span></h3>
+      <p class="muted">${esc(p.name)} · 比赛 ${t.matchId}（${esc(m.home)} vs ${esc(m.away)}） · ${esc(t.operator)} · ${fmtDT(t.at)}</p>
+      <div class="note bad">失败原因：${esc(t.reason)}</div>
+      <div class="sec">执行步骤日志</div>
+      ${stepsHtml(t.steps)}
+      <p class="muted small">失败的测试不会生成报告。可修改提示词后重新运行测试。</p>
+      <div class="mfoot"><button class="btn" data-act="close-modal">关闭</button><button class="btn primary" data-act="test-open" data-pid="${p.id}" ${myRun() ? "disabled" : ""}>重新运行测试</button></div>`, true);
+    return;
+  }
+  const rep = db.reports.find((x) => x.id === md.rid);
+  const m = MATCH[rep.matchId];
+  const head = `<p class="muted">#${rep.id} · ${TYPE_LABEL[rep.type]} · ${esc(m.home)} vs ${esc(m.away)} · ${esc(rep.model)}</p>`;
+  if (md.kind === "audit") {
+    box.innerHTML = shell(`
+      <h3>审核报告</h3>${head}
+      <div class="content" style="max-height:200px;overflow:auto">${esc(reportText(rep, m))}</div>
+      ${impactHtml(impact(rep, { review: "approved" }))}
+      <textarea id="m-reason" style="margin-top:8px" placeholder="不通过时请填写原因（选填）"></textarea>
+      <div class="mfoot"><button class="btn" data-act="close-modal">取消</button><button class="btn danger" data-act="do-reject">不通过（屏蔽）</button><button class="btn ok" data-act="do-approve">审核通过</button></div>`);
+  } else if (md.kind === "block") {
+    box.innerHTML = shell(`
+      <h3>屏蔽报告</h3>${head}
+      <p>屏蔽后报告不在前端展示，也不参与命中率统计，可随时解除屏蔽。</p>
+      ${impactHtml(impact(rep, { blocked: true }))}
+      <textarea id="m-reason" style="margin-top:8px" placeholder="屏蔽原因（选填）"></textarea>
+      <div class="mfoot"><button class="btn" data-act="close-modal">取消</button><button class="btn primary" data-act="do-block">确认屏蔽</button></div>`);
+  } else if (md.kind === "unblock") {
+    box.innerHTML = shell(`
+      <h3>解除屏蔽</h3>${head}
+      ${impactHtml(impact(rep, { blocked: false }))}
+      <div class="mfoot"><button class="btn" data-act="close-modal">取消</button><button class="btn primary" data-act="do-unblock">确认解除</button></div>`);
+  }
+}
+
+function toast(msg, ms) {
+  const el = document.getElementById("toast");
+  el.textContent = msg; el.classList.add("open");
+  clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("open"), ms || 2600);
+}
+function applyReport(rep, change, logText, verb) {
+  const lines = impact(rep, change).filter((l) => !l.includes("（本报告）"));
+  Object.assign(rep, change);
+  rep.log.unshift({ at: Date.now(), actor: OPERATOR, text: logText });
+  save();
+  ui.modal = null;
+  render(); renderModal(); renderDrawer();
+  toast(`${verb}，当前状态：${STATUS[ST[rep.id]].label}${lines.length ? "；" + lines.join("；") : ""}`);
+}
+const reason = () => { const el = document.getElementById("m-reason"); return el && el.value.trim() ? `原因：${el.value.trim()}` : ""; };
+
+function savePrompt() {
+  const d = ui.draft;
+  if (promptCheck(d)) return refreshPromptPreview();
+  const at = Date.now();
+  if (d.id) {
+    const p = db.prompts.find((x) => x.id === d.id);
+    const changes = [];
+    if (p.name !== d.name.trim()) changes.push("名称");
+    if (p.content !== d.content) changes.push("内容");
+    if (p.ratio !== Number(d.ratio)) changes.push(`运行比率 ${p.ratio}%→${d.ratio}%`);
+    if (p.priority !== Number(d.priority)) changes.push(`优先排序 ${p.priority}→${d.priority}`);
+    const bump = p.name !== d.name.trim() || p.content !== d.content;
+    Object.assign(p, { name: d.name.trim(), content: d.content, ratio: Number(d.ratio), priority: Number(d.priority), operator: OPERATOR, updatedAt: at });
+    if (bump) {
+      p.version += 1;
+      p.versions.push({ v: p.version, name: p.name, content: p.content, at, operator: OPERATOR });
+    }
+    p.log.unshift({ at, actor: OPERATOR, text: changes.length ? `编辑：${changes.join("、")}${bump ? `，版本升级为 V${p.version}` : ""}。` : "保存（无改动）。" });
+    toast(bump ? `已保存，生成新版本 V${p.version}` : "已保存");
+  } else {
+    const id = "PR" + String(Math.max(...db.prompts.map((p) => Number(p.id.slice(2)))) + 1).padStart(3, "0");
+    db.prompts.push({ id, module: d.module, name: d.name.trim(), content: d.content, ratio: Number(d.ratio), priority: Number(d.priority),
+      enabled: false, operator: OPERATOR, updatedAt: at, lastTest: null, version: 1,
+      versions: [{ v: 1, name: d.name.trim(), content: d.content, at, operator: OPERATOR }],
+      log: [{ at, actor: OPERATOR, text: "新增提示词（V1），默认停用。" }] });
+    toast("已新增，默认停用。可点击「运行测试」验证效果后再启用。", 4000);
+  }
+  save(); ui.modal = null; renderModal(); render();
+}
+
+document.addEventListener("click", (e) => {
+  const el = e.target.closest("[data-act]");
+  if (!el || el.disabled) return;
+  const act = el.dataset.act;
+  const rid = el.dataset.id || (ui.modal && ui.modal.rid);
+  const rep = rid ? db.reports.find((x) => x.id === rid) : null;
+  if (act === "nav") {
+    ui.view = el.dataset.v; location.hash = ui.view === "prompts" ? "prompts" : "";
+    ui.openId = null; renderDrawer(); render(); return;
+  }
+  if (act === "quick") {
+    const [a, b] = quickRange(el.dataset.k);
+    Object.assign(ui.form, { from: fmtD(a), to: fmtD(b), quick: el.dataset.k });
+    ui.applied = Object.assign({}, ui.form); ui.pageNo = 1; render(); return;
+  }
+  if (act === "search") { ui.applied = Object.assign({}, ui.form); ui.pageNo = 1; render(); return; }
+  if (act === "reset-filter") { ui.form = blankForm(); ui.applied = blankForm(); ui.tab = "all"; ui.pageNo = 1; render(); return; }
+  if (act === "export") { toast(`已导出 ${filtered(false).length} 条（演示）`); return; }
+  if (act === "tab") { ui.tab = el.dataset.k; ui.pageNo = 1; render(); return; }
+  if (act === "page") { ui.pageNo = Number(el.dataset.p); render(); return; }
+  if (act === "view") { ui.openId = el.dataset.id; renderDrawer(); return; }
+  if (act === "close") { ui.openId = null; renderDrawer(); return; }
+  if (act === "rules") { ui.modal = { kind: "rules" }; renderModal(); return; }
+  if (act === "reset-data") { ui.modal = { kind: "reset" }; renderModal(); return; }
+  if (act === "audit" || act === "block" || act === "unblock") { ui.modal = { kind: act, rid: el.dataset.id }; renderModal(); return; }
+  if (act === "close-modal") { ui.modal = null; renderModal(); return; }
+  if (act === "do-approve") return applyReport(rep, { review: "approved" }, "审核通过。", "已审核通过");
+  if (act === "do-reject") return applyReport(rep, { blocked: true }, `审核不通过，屏蔽。${reason()}`, "已屏蔽");
+  if (act === "do-block") return applyReport(rep, { blocked: true }, `屏蔽。${reason()}`, "已屏蔽");
+  if (act === "do-unblock") return applyReport(rep, { blocked: false }, "解除屏蔽。", "已解除屏蔽");
+  if (act === "do-reset") {
+    localStorage.removeItem(STORAGE_KEY);
+    db = seed(); rebuildMatchMap(); save();
+    ui.modal = null; ui.openId = null; render(); renderModal(); renderDrawer(); toast("已恢复初始演示数据"); return;
+  }
+  /* 提示词 */
+  if (act === "prompt-view") { ui.modal = { kind: "prompt-view", pid: el.dataset.pid }; renderModal(); return; }
+  if (act === "prompt-new") {
+    const module = ui.pf.module || "football";
+    const maxPr = Math.max(0, ...db.prompts.filter((p) => p.module === module).map((p) => p.priority));
+    ui.draft = { id: "", module, name: "", content: "", ratio: "50", priority: String(maxPr + 1) };
+    ui.modal = { kind: "prompt-edit" }; renderModal(); return;
+  }
+  if (act === "prompt-edit") {
+    const p = db.prompts.find((x) => x.id === el.dataset.pid);
+    ui.draft = { id: p.id, module: p.module, name: p.name, content: p.content, ratio: String(p.ratio), priority: String(p.priority) };
+    ui.modal = { kind: "prompt-edit" }; renderModal(); return;
+  }
+  if (act === "prompt-save") return savePrompt();
+  if (act === "toggle") { ui.modal = { kind: "toggle", pid: el.dataset.pid }; renderModal(); return; }
+  if (act === "do-toggle") {
+    const p = db.prompts.find((x) => x.id === ui.modal.pid);
+    if (p.enabled && onlyEnabled(p)) { toast("每个模块至少保留一个启用的提示词"); return; }
+    p.enabled = !p.enabled; p.operator = OPERATOR; p.updatedAt = Date.now();
+    p.log.unshift({ at: p.updatedAt, actor: OPERATOR, text: p.enabled ? "启用。" : "停用。" });
+    save(); ui.modal = null; renderModal(); render(); toast(p.enabled ? "已启用" : "已停用"); return;
+  }
+  if (act === "test-open") {
+    const p = el.dataset.pid ? db.prompts.find((x) => x.id === el.dataset.pid) : enabledChain(ui.pf.module || "football")[0];
+    ui.draft = { module: p.module, promptId: p.id, matchId: "", model: MODELS.local[0] };
+    ui.modal = { kind: "test-run" }; renderModal(); return;
+  }
+  if (act === "test-start") return startTest();
+  if (act === "test-report") { ui.modal = { kind: "test-report", rid: el.dataset.rid }; renderModal(); return; }
+  if (act === "test-fail") { ui.modal = { kind: "test-fail", pid: el.dataset.pid }; renderModal(); return; }
+  if (act === "goto-report") {
+    ui.modal = null; renderModal();
+    ui.view = "reports"; location.hash = "";
+    ui.form = Object.assign(blankForm(), { q: el.dataset.rid }); ui.applied = Object.assign({}, ui.form); ui.tab = "all"; ui.pageNo = 1;
+    render(); ui.openId = el.dataset.rid; renderDrawer(); return;
+  }
+});
+document.addEventListener("input", (e) => {
+  const t = e.target;
+  if (t.dataset.f) {
+    ui.form[t.dataset.f] = t.value;
+    if (t.dataset.f === "from" || t.dataset.f === "to") {
+      ui.form.quick = "";
+      document.querySelectorAll(".quick button").forEach((b) => b.classList.remove("on"));
+    }
+  }
+  if (t.dataset.pd) { ui.draft[t.dataset.pd] = t.value; refreshPromptPreview(); }
+  if (t.dataset.td === "matchId") { ui.draft.matchId = t.value; refreshTestHint(); }
+});
+document.addEventListener("change", (e) => {
+  const t = e.target;
+  const k = t.dataset.actChange;
+  if (k === "size") { ui.size = Number(t.value); ui.pageNo = 1; render(); }
+  if (k === "goto") { const n = parseInt(t.value, 10); if (n > 0) { ui.pageNo = n; render(); } }
+  if (t.dataset.pf) { ui.pf[t.dataset.pf] = t.value; render(); }
+  if (t.dataset.td === "module") {
+    ui.draft.module = t.value;
+    const first = db.prompts.filter((p) => p.module === t.value).sort((a, b) => b.enabled - a.enabled || a.priority - b.priority)[0];
+    ui.draft.promptId = first ? first.id : "";
+    ui.draft.matchId = "";
+    renderModal();
+  }
+  if (t.dataset.td === "promptId" || t.dataset.td === "model") { ui.draft[t.dataset.td] = t.value; refreshTestHint(); }
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") { if (ui.modal) { ui.modal = null; renderModal(); } else if (ui.openId) { ui.openId = null; renderDrawer(); } }
+  if (e.key === "Enter" && e.target.dataset && e.target.dataset.f === "q") { ui.applied = Object.assign({}, ui.form); ui.pageNo = 1; render(); }
+});
+window.addEventListener("hashchange", () => {
+  const v = location.hash === "#prompts" ? "prompts" : "reports";
+  if (v !== ui.view) { ui.view = v; render(); }
+});
+
+load();
+rebuildMatchMap();
+save();
+render();
+setInterval(tick, 1000);
+</script>
+</body>
+</html>
