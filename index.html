@@ -967,7 +967,7 @@ function refreshPromptPreview() {
 function testCheck(d) {
   if (myRun()) return { ok: false, msg: "你的测试正在运行，完成后才能再次运行。" };
   if (!d.promptId) return { ok: false, msg: "请选择提示词。" };
-  if (!d.model) return { ok: false, msg: "请选择本地模型。" };
+  if (!d.model) return { ok: false, msg: "请选择预测模型。" };
   const id = (d.matchId || "").trim();
   if (!id) return { ok: false, msg: "请输入比赛ID。" };
   const m = MATCH[id];
@@ -1011,7 +1011,8 @@ function finishTest(run) {
     return;
   }
   const type = matchState(m).phase === "live" ? "live" : "pre";
-  const rep = makeReport(Math.random, m, type, at, { test: true, promptId: p.id, promptVersion: run.promptVersion, source: "local", model: run.model });
+  const source = MODELS.online.includes(run.model) ? "online" : "local";
+  const rep = makeReport(Math.random, m, type, at, { test: true, promptId: p.id, promptVersion: run.promptVersion, source, model: run.model });
   rep.id = String(Math.max(...db.reports.map((x) => Number(x.id))) + 1);
   rep.steps = buildSteps(run, m, p, rep, null);
   rep.log = [{ at, actor: run.operator, text: `提示词管理中运行测试（提示词「${p.name}」V${run.promptVersion}），生成后进入待审核。` }];
@@ -1135,7 +1136,10 @@ function renderModal() {
         <div class="help">只能选择未开赛或进行中的比赛。</div></div></div>
       <div class="frow"><label>模块</label><select class="ctl" data-td="module">${Object.entries(MODULES).map(([k, v]) => opt(k, v, d.module)).join("")}</select></div>
       <div class="frow"><label>提示词</label><select class="ctl" data-td="promptId">${prompts.map((p) => opt(p.id, `${p.name} · V${p.version}${p.enabled ? "" : "（停用）"}`, d.promptId)).join("")}</select></div>
-      <div class="frow"><label>本地模型</label><select class="ctl" data-td="model">${MODELS.local.map((x) => opt(x, x, d.model)).join("")}</select></div>
+      <div class="frow"><label>预测模型</label><div><select class="ctl" data-td="model">
+        <optgroup label="线上AI引擎">${MODELS.online.map((x) => opt(x, x, d.model)).join("")}</optgroup>
+        <optgroup label="本地AI">${MODELS.local.map((x) => opt(x, x, d.model)).join("")}</optgroup>
+      </select><div class="help">选项为当前在用的模型。选线上模型会按单价计费，选本地模型不计费。</div></div></div>
       <div id="t-hint" class="hint"></div>
       <div class="note blue">点击运行后立即开始，异步执行，大约需要 ${TEST_DURATION / 1000} 秒。生成的报告会同步到「AI预测报告管理」，状态为待审核。你的测试运行期间不能再次运行（不影响其他用户）。</div>
       <div class="mfoot"><button class="btn" data-act="close-modal">取消</button><button class="btn primary" id="t-run" data-act="test-start">运行</button></div>`);
